@@ -2,6 +2,11 @@ package com.shresthabinod.springbatch;
 
 import ch.qos.logback.core.db.DriverManagerConnectionSource;
 import com.shresthabinod.springbatch.model.Product;
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.Step;
+import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
+import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
+import org.springframework.batch.core.launch.support.RunIdIncrementer;
 import org.springframework.batch.item.ItemProcessor;
 import org.springframework.batch.item.ItemReader;
 import org.springframework.batch.item.ItemWriter;
@@ -11,6 +16,7 @@ import org.springframework.batch.item.file.FlatFileItemReader;
 import org.springframework.batch.item.file.mapping.BeanWrapperFieldSetMapper;
 import org.springframework.batch.item.file.mapping.DefaultLineMapper;
 import org.springframework.batch.item.file.transform.DelimitedLineTokenizer;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
@@ -21,6 +27,26 @@ import javax.sql.DataSource;
 @Configuration
 
 public class BatchConfig {
+
+    @Autowired
+    JobBuilderFactory jobBuilderFactory;
+
+    @Autowired
+    StepBuilderFactory stepBuilderFactory;
+
+    @Bean
+    public Job job(){return jobBuilderFactory.get("j2")
+            .incrementer(new RunIdIncrementer())
+            .start(step())
+            .build();}
+
+    @Bean
+    public Step step(){return stepBuilderFactory.get("step-1").<Product, Product>chunk(3)
+            .reader(reader())
+            .processor(processor())
+            .writer(writer()).build();
+    }
+
     @Bean
     public ItemReader<Product> reader(){
         FlatFileItemReader<Product> reader = new FlatFileItemReader<>();
@@ -34,6 +60,7 @@ public class BatchConfig {
 
         lineMapper.setLineTokenizer(delimitedLineTokenizer);
         lineMapper.setFieldSetMapper(fieldSetMapper);
+        reader.setLineMapper(lineMapper);
 
         return reader;
     }
